@@ -14,6 +14,7 @@
  */
 
 import { API_BASE_URL } from '@/lib/utils/constants';
+import { handleApiError } from '@/lib/api/error-handler';
 import type {
   APIError,
   APIRequestConfig,
@@ -210,6 +211,10 @@ async function handleErrorResponse(
   } catch {
     // If parsing fails, use default error message
   }
+
+  // Trigger global error handling (toasts, auth redirects) as a side effect.
+  // This runs before throwing so the UI reacts even if the caller swallows the error.
+  handleApiError(statusCode, errorMessages);
 
   // Handle specific status codes
   // Customize these messages based on your application's needs

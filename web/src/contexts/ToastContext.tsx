@@ -20,6 +20,7 @@ import {
   ToastContextValue,
   TOAST_DEFAULTS,
 } from '@/types/toast';
+import { setErrorToastDispatcher } from '@/lib/api/error-handler';
 
 /**
  * Create the Toast Context with undefined default value
@@ -123,6 +124,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timeoutRefs.current.forEach((timeoutId) => clearTimeout(timeoutId));
     timeoutRefs.current.clear();
   }, []);
+
+  // Wire the global error toast dispatcher so the API client can show toasts
+  // from non-React code.
+  useEffect(() => {
+    setErrorToastDispatcher(showToast);
+    return () => setErrorToastDispatcher(null);
+  }, [showToast]);
 
   const value: ToastContextValue = {
     toasts,
