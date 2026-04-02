@@ -4,11 +4,13 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { ToastContainer } from '@/components/toast/ToastContainer';
 import { SessionProvider } from '@/components/auth/session-provider';
 import { auth } from '@/lib/auth/auth';
+import { ThemeProvider } from '@/components/theme/theme-provider';
+import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {
-  title: 'Next.js Application Template',
+  title: 'BetterBond Commission Payments',
   description:
-    'A template for building Next.js applications with external REST APIs',
+    'BetterBond Commission Payments POC — manage commission payments across the agency network',
 };
 
 export default async function RootLayout({
@@ -22,12 +24,12 @@ export default async function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <SessionProvider session={session}>
-          <ToastProvider>
-            <div className="min-h-screen flex flex-col">
-              <main className="flex-1">{children}</main>
-            </div>
-            <ToastContainer />
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+              <ToastContainer />
+            </ToastProvider>
+          </ThemeProvider>
         </SessionProvider>
       </body>
     </html>
