@@ -7,6 +7,7 @@
 3. **STOP and wait** for user to approve story list (mandatory approval point)
 4. **Write acceptance criteria** to story files in `generated-docs/stories/epic-N-[slug]/`
    - Every criterion: Given/When/Then format, user-observable behavior
+   - Every story needs a **Role** field in the header indicating which role(s) the functionality targets (use the specific role name from the FRS, "All Roles" if all roles access it, or "N/A" if roles don't apply)
    - Every story needs Story Metadata: Route, Target File, Page Action
    - **Acceptance criteria must reflect FRS requirements, not existing template behavior** — if the FRS specifies a different approach than the template (e.g., BFF auth instead of NextAuth), criteria must describe the FRS-required behavior
 5. **Commit and push**:

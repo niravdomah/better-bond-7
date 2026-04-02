@@ -399,6 +399,8 @@ When a feature IS the home page, clarify this in acceptance criteria:
 
 **Epic:** [Name] | **Story:** N of Total | **Wireframe:** [link or N/A]
 
+**Role:** [role name from FRS, e.g., Administrator, Broker, Agent, All Roles, or N/A]
+
 ## Story Metadata
 | Field | Value |
 |-------|-------|
@@ -435,6 +437,8 @@ When adding ACs during REALIGN, append new ACs with the next sequential number. 
 - [Technical considerations]
 - [Wireframe references]
 ```
+
+**Role field rules:** Use the specific role name from the FRS if the story's functionality is restricted to one role (e.g., "Administrator"). Use "All Roles" if all roles access the feature. Use "N/A" only if roles genuinely don't apply (e.g., public/unauthenticated pages like login). Never omit the Role field.
 
 **Home Page Setup story template:**
 - **Story Metadata:** Route: `/` | Target File: `app/page.tsx` | Page Action: `modify_existing`
