@@ -18,6 +18,8 @@ declare module 'next-auth' {
     user: {
       id: string;
       role: UserRole;
+      /** Agency ID for Broker users — used for data scoping (R1, R16) */
+      agencyId?: string;
     } & DefaultSession['user'];
   }
 
