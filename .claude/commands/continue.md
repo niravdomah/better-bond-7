@@ -337,7 +337,7 @@ Launch code-reviewer Call A:
 "This is Call A — code review only. Do NOT run quality gates or commit."
 
 Launch code-reviewer Call B:
-"This is Call B — run quality gates and return results. Also read the story file and return the manual verification checklist as text. Do NOT commit."
+"This is Call B — run quality gates and return results. Also read the story file and compose the manual verification checklist. IMPORTANT: You MUST persist the checklist to generated-docs/qa/epic-N-[slug]/story-M-[slug]-verification-checklist.md (create the directory if needed) — this file is the single source of truth for all re-verification prompts during QA fix cycles. Return the checklist text in your response as well. Do NOT commit."
 
 After Call B returns:
 Check if Call B's response indicates a non-routable component (Route: N/A).

@@ -477,7 +477,7 @@ Launch `code-reviewer`:
 **Call B — Simplify + Quality Gates:**
 
 Launch `code-reviewer`:
-> "This is Call B — first run /simplify on the changed code, then run quality gates and return results. Also read the story file and the test-handoff document at [test-handoff path] (for any runtime verification checklist items) and return the manual verification checklist as text in your response. If no test-handoff document exists at that path, proceed without it. Do NOT commit. Just return the gate results and the checklist."
+> "This is Call B — first run /simplify on the changed code, then run quality gates and return results. Also read the story file and the test-handoff document at [test-handoff path] (for any runtime verification checklist items) and compose the manual verification checklist. IMPORTANT: You MUST persist the checklist to generated-docs/qa/epic-N-[slug]/story-M-[slug]-verification-checklist.md (create the directory if needed) — this file is the single source of truth for all re-verification prompts during QA fix cycles. Return the checklist text in your response as well. If no test-handoff document exists at that path, proceed without it. Do NOT commit. Just return the gate results and the checklist."
 
 **Orchestrator — Manual Verification:**
 
