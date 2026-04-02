@@ -17,16 +17,16 @@
 ## Acceptance Criteria
 
 ### Happy Path
-- [ ] AC-1: Given I am logged in, when the application makes any API call, then the request is sent to the base URL configured via the NEXT_PUBLIC_API_BASE_URL environment variable (defaulting to http://localhost:8042).
-- [ ] AC-2: Given I am logged in, when any API call is in progress, then I see a loading indicator on the screen.
-- [ ] AC-3: Given a data fetch completes successfully, when the response arrives, then the loading indicator disappears and the data is displayed.
-- [ ] AC-4: Given the typed endpoint functions exist (e.g., getPayments, getDashboard), when I use any screen that calls the API, then the correct endpoint and HTTP method are used as defined in the OpenAPI spec.
+- [x] AC-1: Given I am logged in, when the application makes any API call, then the request is sent to the base URL configured via the NEXT_PUBLIC_API_BASE_URL environment variable (defaulting to http://localhost:8042).
+- [x] AC-2: Given I am logged in, when any API call is in progress, then I see a loading indicator on the screen.
+- [x] AC-3: Given a data fetch completes successfully, when the response arrives, then the loading indicator disappears and the data is displayed.
+- [x] AC-4: Given the typed endpoint functions exist (e.g., getPayments, getDashboard), when I use any screen that calls the API, then the correct endpoint and HTTP method are used as defined in the OpenAPI spec.
 
 ### Edge Cases
-- [ ] AC-5: Given the environment variable NEXT_PUBLIC_API_BASE_URL is set to a custom value, when the application makes API calls, then those calls go to the custom URL instead of the default.
+- [x] AC-5: Given the environment variable NEXT_PUBLIC_API_BASE_URL is set to a custom value, when the application makes API calls, then those calls go to the custom URL instead of the default.
 
 ### Error Handling
-- [ ] AC-6: Given the API server is unreachable, when a request times out or fails to connect, then I see an error message rather than an endlessly spinning loader.
+- [x] AC-6: Given the API server is unreachable, when a request times out or fails to connect, then I see an error message rather than an endlessly spinning loader.
 
 ## API Endpoints (from OpenAPI spec)
 | Method | Endpoint | Purpose |
