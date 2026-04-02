@@ -6,23 +6,20 @@ import { DEFAULT_ROLE, UserRole } from '@/types/roles';
 import type { NextAuthConfig } from 'next-auth';
 
 /**
- * Authentication Configuration
+ * Authentication Configuration — BetterBond Commission Payments
  *
  * DEVELOPMENT MODE:
  * Demo users are available for testing. See credentials below.
  *
  * PRODUCTION MODE:
- * Demo users are DISABLED. You MUST implement a real authentication provider:
- * 1. Use a database adapter: https://authjs.dev/getting-started/adapters
- * 2. Or configure OAuth providers (Google, Azure AD, etc.)
+ * Demo users are DISABLED. You MUST implement a real authentication provider.
  *
  * Demo credentials (DEVELOPMENT ONLY):
- * | Email                 | Password    | Role          |
- * |-----------------------|-------------|---------------|
- * | admin@example.com     | Admin123!   | ADMIN         |
- * | power@example.com     | Power123!   | POWER_USER    |
- * | user@example.com      | User123!    | STANDARD_USER |
- * | readonly@example.com  | Reader123!  | READ_ONLY     |
+ * | Email                 | Password    | Role   |
+ * |-----------------------|-------------|--------|
+ * | admin@example.com     | Admin123!   | Admin  |
+ * | broker@example.com    | Broker123!  | Broker |
+ * | agent@example.com     | Agent123!   | Agent  |
  */
 
 // NEXTAUTH_SECRET validation
@@ -55,6 +52,7 @@ if (
 /**
  * Demo users - ONLY available in development mode
  * These are automatically disabled in production builds.
+ * Passwords are bcrypt-hashed below; plaintext shown in comments.
  */
 const demoUsers = [
   {
@@ -66,24 +64,17 @@ const demoUsers = [
   },
   {
     id: '2',
-    email: 'power@example.com',
-    name: 'Power User',
-    password: '$2b$10$daDqYt5RAezYKtDMfNnzBunyvs/W7FRhgVPjvq0SsdOiD1jYBKwZm', // Power123!
-    role: UserRole.POWER_USER,
+    email: 'broker@example.com',
+    name: 'Broker User',
+    password: '$2b$10$l3ZsPAkxt30gZCKLnV7jnOL2vx1/F/XnWPBT0/YUXwktL3nAdGtnq', // Broker123!
+    role: UserRole.BROKER,
   },
   {
     id: '3',
-    email: 'user@example.com',
-    name: 'Standard User',
-    password: '$2b$10$DG4whrMZU7fQm/oIMRom2u8BuyglJ0ZLWKDHN2p.jaAaxvub96E5m', // User123!
-    role: UserRole.STANDARD_USER,
-  },
-  {
-    id: '4',
-    email: 'readonly@example.com',
-    name: 'Read-Only User',
-    password: '$2b$10$7pcgpuizrAyyOcwbT37GruxwFsIg9NOuGcDzDUHjJm2SSCD70TxGy', // Reader123!
-    role: UserRole.READ_ONLY,
+    email: 'agent@example.com',
+    name: 'Agent User',
+    password: '$2b$10$eKtHsql8UnhlCB5/SXNA5u8WRr4EaQqGFNWYRQWADpleWn9zAwtfm', // Agent123!
+    role: UserRole.AGENT,
   },
 ];
 
@@ -166,7 +157,21 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as { role?: UserRole }).role || DEFAULT_ROLE;
+        // Generate an initial access token for API Bearer auth
+        token.accessToken = `bb-${token.sub}-${Date.now()}`;
+        token.accessTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
       }
+
+      // Silent token refresh (R52): refresh token before expiry without user interruption
+      if (
+        token.accessTokenExpires &&
+        typeof token.accessTokenExpires === 'number' &&
+        Date.now() >= token.accessTokenExpires
+      ) {
+        token.accessToken = `bb-${token.sub}-${Date.now()}`;
+        token.accessTokenExpires = Date.now() + 60 * 60 * 1000;
+      }
+
       return token;
     },
 
@@ -174,6 +179,9 @@ export const authConfig: NextAuthConfig = {
       if (token && session.user) {
         session.user.id = token.sub!;
         session.user.role = (token.role as UserRole) || DEFAULT_ROLE;
+        // Expose access token to client for API Bearer auth (AC-4)
+        (session as { accessToken?: string }).accessToken =
+          token.accessToken as string;
       }
       return session;
     },

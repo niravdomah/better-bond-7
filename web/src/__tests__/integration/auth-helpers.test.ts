@@ -56,20 +56,21 @@ import {
 } from '@/types/roles';
 
 describe('Role Utilities', () => {
-  it('should have correct hierarchy levels (ADMIN > POWER_USER > STANDARD_USER > READ_ONLY)', () => {
+  it('should have correct hierarchy levels (ADMIN > BROKER > AGENT)', () => {
     expect(getRoleLevel(UserRole.ADMIN)).toBe(100);
-    expect(getRoleLevel(UserRole.POWER_USER)).toBe(50);
-    expect(getRoleLevel(UserRole.STANDARD_USER)).toBe(25);
-    expect(getRoleLevel(UserRole.READ_ONLY)).toBe(10);
+    expect(getRoleLevel(UserRole.BROKER)).toBe(50);
+    expect(getRoleLevel(UserRole.AGENT)).toBe(10);
   });
 
   it('should validate role strings correctly', () => {
     expect(isValidRole('admin')).toBe(true);
+    expect(isValidRole('broker')).toBe(true);
+    expect(isValidRole('agent')).toBe(true);
     expect(isValidRole('invalid')).toBe(false);
   });
 
-  it('should default new users to STANDARD_USER', () => {
-    expect(DEFAULT_ROLE).toBe(UserRole.STANDARD_USER);
+  it('should default new users to AGENT', () => {
+    expect(DEFAULT_ROLE).toBe(UserRole.AGENT);
   });
 });
 
@@ -77,57 +78,65 @@ describe('Auth Helper Functions', () => {
   it('hasRole - should match exact role only', () => {
     const adminUser = { role: UserRole.ADMIN };
     expect(hasRole(adminUser, UserRole.ADMIN)).toBe(true);
-    expect(hasRole(adminUser, UserRole.POWER_USER)).toBe(false);
+    expect(hasRole(adminUser, UserRole.BROKER)).toBe(false);
   });
 
   it('hasAnyRole - should match if user has any of the specified roles', () => {
-    const powerUser = { role: UserRole.POWER_USER };
-    expect(hasAnyRole(powerUser, [UserRole.ADMIN, UserRole.POWER_USER])).toBe(
+    const brokerUser = { role: UserRole.BROKER };
+    expect(hasAnyRole(brokerUser, [UserRole.ADMIN, UserRole.BROKER])).toBe(
       true,
     );
-    expect(hasAnyRole(powerUser, [UserRole.ADMIN])).toBe(false);
+    expect(hasAnyRole(brokerUser, [UserRole.ADMIN])).toBe(false);
   });
 
   it('hasMinimumRole - should allow higher roles to access lower-level resources', () => {
     const adminUser = { role: UserRole.ADMIN };
-    const readOnlyUser = { role: UserRole.READ_ONLY };
+    const agentUser = { role: UserRole.AGENT };
 
     // Admin can access everything
-    expect(hasMinimumRole(adminUser, UserRole.READ_ONLY)).toBe(true);
+    expect(hasMinimumRole(adminUser, UserRole.AGENT)).toBe(true);
     expect(hasMinimumRole(adminUser, UserRole.ADMIN)).toBe(true);
 
-    // Read-only cannot access higher levels
-    expect(hasMinimumRole(readOnlyUser, UserRole.STANDARD_USER)).toBe(false);
-    expect(hasMinimumRole(readOnlyUser, UserRole.READ_ONLY)).toBe(true);
+    // Agent cannot access higher levels
+    expect(hasMinimumRole(agentUser, UserRole.BROKER)).toBe(false);
+    expect(hasMinimumRole(agentUser, UserRole.AGENT)).toBe(true);
   });
 
   it('should return false for null or undefined user', () => {
     expect(hasRole(null, UserRole.ADMIN)).toBe(false);
     expect(hasAnyRole(undefined, [UserRole.ADMIN])).toBe(false);
-    expect(hasMinimumRole(null, UserRole.READ_ONLY)).toBe(false);
+    expect(hasMinimumRole(null, UserRole.AGENT)).toBe(false);
   });
 });
 
 describe('Resource-Based Access Control', () => {
-  it('isAuthorized - should enforce resource-specific permissions', () => {
+  it('isAuthorized - should enforce BetterBond resource-specific permissions', () => {
     const adminUser = { role: UserRole.ADMIN };
-    const standardUser = { role: UserRole.STANDARD_USER };
+    const brokerUser = { role: UserRole.BROKER };
+    const agentUser = { role: UserRole.AGENT };
 
-    // System settings - admin only
-    expect(isAuthorized(adminUser, 'system-settings', 'read')).toBe(true);
-    expect(isAuthorized(standardUser, 'system-settings', 'read')).toBe(false);
+    // Payments — Agent can read, Broker can write, Admin can delete
+    expect(isAuthorized(agentUser, 'payments', 'read')).toBe(true);
+    expect(isAuthorized(agentUser, 'payments', 'write')).toBe(false);
+    expect(isAuthorized(brokerUser, 'payments', 'write')).toBe(true);
+    expect(isAuthorized(adminUser, 'payments', 'delete')).toBe(true);
 
-    // Documents - role hierarchy applies
-    expect(isAuthorized(standardUser, 'document', 'write')).toBe(true);
-    expect(isAuthorized(standardUser, 'document', 'delete')).toBe(false);
+    // Banking details — Agent cannot see, Broker and Admin can
+    expect(isAuthorized(agentUser, 'banking-details', 'read')).toBe(false);
+    expect(isAuthorized(brokerUser, 'banking-details', 'read')).toBe(true);
+    expect(isAuthorized(adminUser, 'banking-details', 'read')).toBe(true);
+
+    // Demo reset — Admin only
+    expect(isAuthorized(adminUser, 'demo-reset', 'admin')).toBe(true);
+    expect(isAuthorized(brokerUser, 'demo-reset', 'admin')).toBe(false);
   });
 
   it('isAuthorized - should require admin for unknown resources', () => {
     const adminUser = { role: UserRole.ADMIN };
-    const powerUser = { role: UserRole.POWER_USER };
+    const brokerUser = { role: UserRole.BROKER };
 
     expect(isAuthorized(adminUser, 'unknown-resource', 'read')).toBe(true);
-    expect(isAuthorized(powerUser, 'unknown-resource', 'read')).toBe(false);
+    expect(isAuthorized(brokerUser, 'unknown-resource', 'read')).toBe(false);
   });
 });
 
@@ -162,7 +171,7 @@ describe('withRoleProtection - API Route Wrapper', () => {
 
   it('should return 403 when user lacks required role', async () => {
     mockAuth.mockResolvedValue({
-      user: { id: '1', role: UserRole.STANDARD_USER },
+      user: { id: '1', role: UserRole.AGENT },
       expires: new Date().toISOString(),
     });
 
@@ -206,7 +215,7 @@ describe('withRoleProtection - API Route Wrapper', () => {
 
     const handler = createMockHandler();
     const protectedHandler = withRoleProtection(handler, {
-      minimumRole: UserRole.POWER_USER,
+      minimumRole: UserRole.BROKER,
     });
 
     const response = await protectedHandler(mockRequest);
@@ -217,13 +226,13 @@ describe('withRoleProtection - API Route Wrapper', () => {
 
   it('should return 403 when user does not meet minimum role requirement', async () => {
     mockAuth.mockResolvedValue({
-      user: { id: '1', role: UserRole.READ_ONLY },
+      user: { id: '1', role: UserRole.AGENT },
       expires: new Date().toISOString(),
     });
 
     const handler = createMockHandler();
     const protectedHandler = withRoleProtection(handler, {
-      minimumRole: UserRole.POWER_USER,
+      minimumRole: UserRole.BROKER,
     });
 
     const response = await protectedHandler(mockRequest);
@@ -236,13 +245,13 @@ describe('withRoleProtection - API Route Wrapper', () => {
 
   it('should support roles array option for multiple allowed roles', async () => {
     mockAuth.mockResolvedValue({
-      user: { id: '1', role: UserRole.POWER_USER },
+      user: { id: '1', role: UserRole.BROKER },
       expires: new Date().toISOString(),
     });
 
     const handler = createMockHandler();
     const protectedHandler = withRoleProtection(handler, {
-      roles: [UserRole.ADMIN, UserRole.POWER_USER],
+      roles: [UserRole.ADMIN, UserRole.BROKER],
     });
 
     const response = await protectedHandler(mockRequest);
@@ -253,13 +262,13 @@ describe('withRoleProtection - API Route Wrapper', () => {
 
   it('should return 403 when user role is not in allowed roles array', async () => {
     mockAuth.mockResolvedValue({
-      user: { id: '1', role: UserRole.READ_ONLY },
+      user: { id: '1', role: UserRole.AGENT },
       expires: new Date().toISOString(),
     });
 
     const handler = createMockHandler();
     const protectedHandler = withRoleProtection(handler, {
-      roles: [UserRole.ADMIN, UserRole.POWER_USER],
+      roles: [UserRole.ADMIN, UserRole.BROKER],
     });
 
     const response = await protectedHandler(mockRequest);

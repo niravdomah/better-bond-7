@@ -69,7 +69,7 @@ export async function requireAuth(callbackUrl?: string): Promise<Session> {
  * ```tsx
  * export default async function PowerUserPage() {
  *   // Both ADMIN and POWER_USER can access
- *   const session = await requireMinimumRole(UserRole.POWER_USER);
+ *   const session = await requireMinimumRole(UserRole.BROKER);
  *   return <div>Power User Features</div>;
  * }
  * ```
@@ -153,7 +153,7 @@ export async function getSession(): Promise<Session | null> {
  * Usage in Server Components:
  * ```tsx
  * export default async function Page() {
- *   const canAccessPowerFeatures = await checkMinimumRole(UserRole.POWER_USER);
+ *   const canAccessPowerFeatures = await checkMinimumRole(UserRole.BROKER);
  *   if (canAccessPowerFeatures) {
  *     return <PowerUserFeatures />;
  *   }

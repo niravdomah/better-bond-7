@@ -15,7 +15,7 @@
  * </RoleGate>
  *
  * // Multiple allowed roles
- * <RoleGate allowedRoles={[UserRole.ADMIN, UserRole.POWER_USER]}>
+ * <RoleGate allowedRoles={[UserRole.ADMIN, UserRole.BROKER]}>
  *   <ManagementTools />
  * </RoleGate>
  *
@@ -28,7 +28,7 @@
  * </RoleGate>
  *
  * // With minimum role (hierarchy-based)
- * <RoleGate minimumRole={UserRole.POWER_USER}>
+ * <RoleGate minimumRole={UserRole.BROKER}>
  *   <AdvancedFeatures />
  * </RoleGate>
  *

@@ -52,7 +52,7 @@ export const GET = withRoleProtection(
       );
     }
   },
-  { minimumRole: UserRole.STANDARD_USER },
+  { minimumRole: UserRole.AGENT },
 );
 
 /**
@@ -103,7 +103,7 @@ export const POST = withRoleProtection(
       );
     }
   },
-  { minimumRole: UserRole.POWER_USER },
+  { minimumRole: UserRole.BROKER },
 );
 
 /**
@@ -168,5 +168,5 @@ export const PATCH = withRoleProtection(
       );
     }
   },
-  { roles: [UserRole.ADMIN, UserRole.POWER_USER] }, // Admin or Power User can access
+  { roles: [UserRole.ADMIN, UserRole.BROKER] }, // Admin or Broker can access
 );

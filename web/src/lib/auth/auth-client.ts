@@ -3,9 +3,24 @@
 import {
   signIn as nextAuthSignIn,
   signOut as nextAuthSignOut,
+  getSession,
 } from 'next-auth/react';
 
 export { useSession } from 'next-auth/react';
+
+/**
+ * Get the current access token from the session.
+ * Used by the API client for automatic Bearer token attachment (AC-4).
+ * Returns null if not authenticated.
+ */
+export async function getAccessToken(): Promise<string | null> {
+  try {
+    const session = await getSession();
+    return (session as { accessToken?: string } | null)?.accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function signIn(
   email: string,

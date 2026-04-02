@@ -14,11 +14,14 @@
  */
 
 import { vi, type Mock } from 'vitest';
-import { apiClient, get, post } from '@/lib/api/client';
+import { apiClient, get, post, setTokenProvider } from '@/lib/api/client';
 import type { APIError } from '@/types/api';
 
 // Mock the global fetch function
 global.fetch = vi.fn();
+
+// Disable token provider for existing API client tests (no auth context needed)
+setTokenProvider(async () => null);
 
 describe('API Client Integration Tests', () => {
   beforeEach(() => {

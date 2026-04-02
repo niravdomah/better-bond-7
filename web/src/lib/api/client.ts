@@ -22,6 +22,27 @@ import type {
 } from '@/types/api';
 
 /**
+ * Token provider function — resolves to the current Bearer token or null.
+ * Default implementation uses next-auth/react getSession().
+ * Can be overridden for testing via setTokenProvider().
+ */
+let tokenProvider: () => Promise<string | null> = async () => {
+  try {
+    const { getAccessToken } = await import('@/lib/auth/auth-client');
+    return await getAccessToken();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Override the token provider (useful for testing).
+ */
+export function setTokenProvider(provider: () => Promise<string | null>): void {
+  tokenProvider = provider;
+}
+
+/**
  * Main API client function that wraps fetch with error handling and logging
  *
  * @param endpoint - API endpoint path (e.g., '/v1/resource')
@@ -38,12 +59,14 @@ export async function apiClient<T = unknown>(
   // Build full URL with query parameters
   const url = buildUrl(endpoint, params);
 
-  // Build headers
+  // Build headers with Bearer token auto-attachment (AC-4)
+  const accessToken = await tokenProvider();
   const headers = buildHeaders(
     fetchConfig.method,
     lastChangedUser,
     fetchConfig.headers,
     fetchConfig.body ?? undefined,
+    accessToken,
   );
 
   // Log request in development
@@ -116,8 +139,14 @@ function buildHeaders(
   lastChangedUser?: string,
   customHeaders?: HeadersInit,
   body?: BodyInit,
+  accessToken?: string | null,
 ): Record<string, string> {
   const baseHeaders: Record<string, string> = {};
+
+  // Auto-attach Bearer token (AC-4: Authorization header on all API requests)
+  if (accessToken) {
+    baseHeaders['Authorization'] = `Bearer ${accessToken}`;
+  }
 
   // Convert HeadersInit to plain object if needed
   if (customHeaders) {

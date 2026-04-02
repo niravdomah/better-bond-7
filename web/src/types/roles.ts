@@ -1,69 +1,54 @@
 /**
- * User Role Definitions
+ * BetterBond User Role Definitions
  *
- * IMPORTANT: These are example roles for demonstration purposes.
- * Each application should define its own roles based on business requirements.
- *
- * To customize for your project:
- * 1. Update the UserRole enum with your application's specific roles
- * 2. Update the ROLE_HIERARCHY object to define permission levels
- * 3. Update the roleDescriptions with meaningful descriptions
- * 4. Consider role-to-permission mappings for fine-grained access control
+ * Three roles defined per FRS Section 3:
+ * - Admin: Full access across all agencies
+ * - Broker: Manages own agency only
+ * - Agent: Read-only view of own records
  */
 
-/**
- * Example role enum pattern.
- * Replace these with your application's specific roles.
- */
 export enum UserRole {
   /**
-   * Full system access - can manage users, configurations, and all resources
+   * Full access across all agencies — can manage all data, trigger demo reset
    */
   ADMIN = 'admin',
 
   /**
-   * Advanced features and bulk operations - can manage resources within their scope
+   * Manages own agency — can park/unpark payments, view banking details
    */
-  POWER_USER = 'power_user',
+  BROKER = 'broker',
 
   /**
-   * Standard access - can create, edit, and delete own resources
+   * Read-only access to own records — cannot see banking details
    */
-  STANDARD_USER = 'standard_user',
-
-  /**
-   * View-only access - can only read data, cannot make changes
-   */
-  READ_ONLY = 'read_only',
+  AGENT = 'agent',
 }
 
 /**
  * Role hierarchy defines the privilege level of each role.
  * Higher numbers indicate greater privilege.
- * Used for "at least" permission checks (e.g., "requires power user or higher").
+ * Admin > Broker > Agent
  */
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   [UserRole.ADMIN]: 100,
-  [UserRole.POWER_USER]: 50,
-  [UserRole.STANDARD_USER]: 25,
-  [UserRole.READ_ONLY]: 10,
+  [UserRole.BROKER]: 50,
+  [UserRole.AGENT]: 10,
 };
 
 /**
  * Human-readable role descriptions for UI display
  */
 export const roleDescriptions: Record<UserRole, string> = {
-  [UserRole.ADMIN]: 'Full system access',
-  [UserRole.POWER_USER]: 'Advanced features and bulk operations',
-  [UserRole.STANDARD_USER]: 'Standard user access',
-  [UserRole.READ_ONLY]: 'View-only access',
+  [UserRole.ADMIN]: 'Full access across all agencies',
+  [UserRole.BROKER]: 'Manages own agency',
+  [UserRole.AGENT]: 'Read-only access',
 };
 
 /**
  * Default role assigned to new users if not specified.
- * Customize based on your application's security requirements.
+ * Agent is the most restrictive — safe default.
  */
-export const DEFAULT_ROLE = UserRole.STANDARD_USER;
+export const DEFAULT_ROLE = UserRole.AGENT;
 
 /**
  * Type guard to check if a string is a valid UserRole

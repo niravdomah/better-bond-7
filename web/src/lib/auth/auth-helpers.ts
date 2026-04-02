@@ -44,7 +44,7 @@ export function hasRole(
  *
  * @example
  * ```ts
- * if (hasAnyRole(session?.user, [UserRole.ADMIN, UserRole.POWER_USER])) {
+ * if (hasAnyRole(session?.user, [UserRole.ADMIN, UserRole.BROKER])) {
  *   // User is either admin or power user
  * }
  * ```
@@ -68,7 +68,7 @@ export function hasAnyRole(
  * @example
  * ```ts
  * // ADMIN (100) and POWER_USER (50) can access, others cannot
- * if (hasMinimumRole(session?.user, UserRole.POWER_USER)) {
+ * if (hasMinimumRole(session?.user, UserRole.BROKER)) {
  *   // User has power user privileges or higher
  * }
  * ```
@@ -144,7 +144,7 @@ export async function requireRole(role: UserRole): Promise<Session> {
  * ```ts
  * export default async function PowerUserPage() {
  *   // ADMIN and POWER_USER can access
- *   const session = await requireMinimumRole(UserRole.POWER_USER);
+ *   const session = await requireMinimumRole(UserRole.BROKER);
  *   return <div>Power User Features</div>;
  * }
  * ```
@@ -173,7 +173,7 @@ export async function requireMinimumRole(
  * @example
  * ```ts
  * export default async function ManagementPage() {
- *   const session = await requireAnyRole([UserRole.ADMIN, UserRole.POWER_USER]);
+ *   const session = await requireAnyRole([UserRole.ADMIN, UserRole.BROKER]);
  *   return <div>Management Dashboard</div>;
  * }
  * ```
@@ -212,7 +212,7 @@ export async function requireAnyRole(roles: UserRole[]): Promise<Session> {
  *   async (request) => {
  *     return NextResponse.json({ success: true });
  *   },
- *   { minimumRole: UserRole.POWER_USER }
+ *   { minimumRole: UserRole.BROKER }
  * );
  *
  * // Protect route requiring any of specified roles
@@ -220,7 +220,7 @@ export async function requireAnyRole(roles: UserRole[]): Promise<Session> {
  *   async (request) => {
  *     return NextResponse.json({ deleted: true });
  *   },
- *   { roles: [UserRole.ADMIN, UserRole.POWER_USER] }
+ *   { roles: [UserRole.ADMIN, UserRole.BROKER] }
  * );
  * ```
  */
@@ -309,26 +309,25 @@ export function isAuthorized(
 ): boolean {
   if (!user) return false;
 
-  // Example authorization rules - customize for your application
+  // BetterBond authorization rules per FRS Section 3
   switch (resource) {
-    case 'user-profile':
-      if (action === 'read') return true; // All authenticated users can read profiles
-      if (action === 'write')
-        return hasMinimumRole(user, UserRole.STANDARD_USER);
+    case 'payments':
+      if (action === 'read') return hasMinimumRole(user, UserRole.AGENT);
+      if (action === 'write') return hasMinimumRole(user, UserRole.BROKER);
       if (action === 'delete') return hasRole(user, UserRole.ADMIN);
       if (action === 'admin') return hasRole(user, UserRole.ADMIN);
       break;
 
-    case 'document':
-      if (action === 'read') return hasMinimumRole(user, UserRole.READ_ONLY);
-      if (action === 'write')
-        return hasMinimumRole(user, UserRole.STANDARD_USER);
-      if (action === 'delete') return hasMinimumRole(user, UserRole.POWER_USER);
-      if (action === 'admin') return hasRole(user, UserRole.ADMIN);
-      break;
+    case 'banking-details':
+      // CR1: Banking details visible only to Broker and Admin (POPIA)
+      return hasMinimumRole(user, UserRole.BROKER);
 
-    case 'system-settings':
-      // Only admins can access system settings
+    case 'payments-made':
+      // R3: Agents have no access to Screen 3
+      return hasMinimumRole(user, UserRole.BROKER);
+
+    case 'demo-reset':
+      // R4: Only Admins can trigger Reset Demo
       return hasRole(user, UserRole.ADMIN);
 
     default:

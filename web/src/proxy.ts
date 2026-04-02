@@ -46,10 +46,10 @@ import type { NextRequest } from 'next/server';
  * '/admin/settings': { role: UserRole.ADMIN }
  *
  * // Any of multiple roles
- * '/reports': { roles: [UserRole.ADMIN, UserRole.POWER_USER] }
+ * '/reports': { roles: [UserRole.ADMIN, UserRole.BROKER] }
  *
  * // Minimum role level (hierarchy-based)
- * '/dashboard': { minimumRole: UserRole.STANDARD_USER }
+ * '/dashboard': { minimumRole: UserRole.AGENT }
  *
  * // Any authenticated user
  * '/profile': { authenticated: true }
@@ -106,17 +106,17 @@ export const routeProtection: Record<string, RouteProtectionConfig> = {
   '/admin': { role: UserRole.ADMIN },
   '/api/admin': { role: UserRole.ADMIN },
 
-  // Power user and above routes
-  '/management': { minimumRole: UserRole.POWER_USER },
-  '/api/management': { minimumRole: UserRole.POWER_USER },
+  // Broker and above routes
+  '/management': { minimumRole: UserRole.BROKER },
+  '/api/management': { minimumRole: UserRole.BROKER },
 
   // Routes accessible by specific roles
-  '/reports': { roles: [UserRole.ADMIN, UserRole.POWER_USER] },
-  '/api/reports': { roles: [UserRole.ADMIN, UserRole.POWER_USER] },
+  '/reports': { roles: [UserRole.ADMIN, UserRole.BROKER] },
+  '/api/reports': { roles: [UserRole.ADMIN, UserRole.BROKER] },
 
-  // Standard user and above routes
-  '/dashboard': { minimumRole: UserRole.STANDARD_USER },
-  '/api/dashboard': { minimumRole: UserRole.STANDARD_USER },
+  // Agent and above routes (all authenticated roles)
+  '/dashboard': { minimumRole: UserRole.AGENT },
+  '/api/dashboard': { minimumRole: UserRole.AGENT },
 
   // Any authenticated user can access
   '/profile': { authenticated: true },
@@ -124,7 +124,7 @@ export const routeProtection: Record<string, RouteProtectionConfig> = {
   '/api/user': { authenticated: true },
 
   // Example API routes with different protection levels
-  '/api/example/protected-action': { minimumRole: UserRole.POWER_USER },
+  '/api/example/protected-action': { minimumRole: UserRole.BROKER },
 };
 
 /**
@@ -212,8 +212,8 @@ function checkAuthorization(
     if (missingRoleBehavior === 'deny') {
       return false;
     }
-    // 'lowest' behavior: treat as READ_ONLY
-    user = { role: UserRole.READ_ONLY };
+    // 'lowest' behavior: treat as Agent (lowest privilege)
+    user = { role: UserRole.AGENT };
   }
 
   // Check exact role requirement
