@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   BarChart,
   Bar,
@@ -37,7 +38,7 @@ interface DashboardState {
   dashboard: PaymentsDashboardRead | null;
   dashboardLoading: boolean;
   dashboardError: string | null;
-  payments14Day: number | null;
+  payments: PaymentRead[] | null;
   payments14DayLoading: boolean;
   payments14DayError: string | null;
 }
@@ -76,7 +77,7 @@ function computeTotalReadyValue(
   statusReport: PaymentStatusReportItem[],
 ): number {
   return statusReport
-    .filter((item) => item.Status !== 'PROCESSED' && item.Status !== 'PARKED')
+    .filter((item) => item.Status === 'READY')
     .reduce((sum, item) => sum + item.TotalPaymentAmount, 0);
 }
 
@@ -110,16 +111,140 @@ function isDashboardEmpty(dashboard: PaymentsDashboardRead): boolean {
   );
 }
 
+/**
+ * Filter data by agency name. If agencyFilter is null, returns all data.
+ */
+function filterStatusReport(
+  items: PaymentStatusReportItem[],
+  agencyFilter: string | null,
+): PaymentStatusReportItem[] {
+  if (!agencyFilter) return items;
+  return items.filter((item) => item.AgencyName === agencyFilter);
+}
+
+function filterAgingReport(
+  items: ParkedPaymentsAgingReportItem[],
+  agencyFilter: string | null,
+): ParkedPaymentsAgingReportItem[] {
+  if (!agencyFilter) return items;
+  return items.filter((item) => item.AgencyName === agencyFilter);
+}
+
+function filterPaymentsByAgency(
+  items: PaymentsByAgencyReportItem[],
+  agencyFilter: string | null,
+): PaymentsByAgencyReportItem[] {
+  if (!agencyFilter) return items;
+  return items.filter((item) => item.AgencyName === agencyFilter);
+}
+
+function filterPayments(
+  payments: PaymentRead[],
+  agencyFilter: string | null,
+): PaymentRead[] {
+  if (!agencyFilter) return payments;
+  return payments.filter((p) => p.AgencyName === agencyFilter);
+}
+
+/**
+ * Check if an agency name exists in the dashboard data.
+ */
+function isValidAgency(
+  dashboard: PaymentsDashboardRead,
+  agencyName: string,
+): boolean {
+  return dashboard.PaymentsByAgency.some((a) => a.AgencyName === agencyName);
+}
+
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+
+  const userRole = session?.user?.role;
+  const userAgencyId = (session?.user as { agencyId?: string } | undefined)
+    ?.agencyId;
+
+  // Determine if this user is a Broker (pre-filtered to own agency)
+  const isBroker = userRole === 'broker';
+  // Determine if this user is an Agent (read-only, no agency selection)
+  const isAgent = userRole === 'agent';
+
   const [state, setState] = useState<DashboardState>({
     dashboard: null,
     dashboardLoading: true,
     dashboardError: null,
-    payments14Day: null,
+    payments: null,
     payments14DayLoading: true,
     payments14DayError: null,
   });
+
+  // Track user-initiated agency selection (Admin clicking rows)
+  // null means "no explicit selection" — use URL or default
+  const [clickedAgency, setClickedAgency] = useState<string | null>(null);
+  // Track whether the user has explicitly interacted (to distinguish "no selection" from "initial state")
+  const [hasUserClicked, setHasUserClicked] = useState(false);
+
+  // Derive the effective agency filter from role, URL, user click, and data
+  const effectiveAgencyFilter = useMemo(() => {
+    // Broker is always locked to own agency
+    if (isBroker && userAgencyId) {
+      return userAgencyId;
+    }
+    // Agent: no filtering
+    if (isAgent) {
+      return null;
+    }
+    // Admin: user click takes priority
+    if (hasUserClicked) {
+      return clickedAgency;
+    }
+    // Admin: check URL for agencyId (initial load / back navigation)
+    const urlAgency = searchParams.get('agencyId');
+    if (
+      urlAgency &&
+      state.dashboard &&
+      isValidAgency(state.dashboard, urlAgency)
+    ) {
+      return urlAgency;
+    }
+    // Default: no filter (all agencies)
+    return null;
+  }, [
+    isBroker,
+    userAgencyId,
+    isAgent,
+    hasUserClicked,
+    clickedAgency,
+    searchParams,
+    state.dashboard,
+  ]);
+
+  // Derive selectedAgency for visual highlight (matches effectiveAgencyFilter for Admin/Broker)
+  const selectedAgency = effectiveAgencyFilter;
+
+  // Handle agency row click
+  const handleAgencyRowClick = useCallback(
+    (agencyName: string) => {
+      // Agent role: no selection allowed
+      if (isAgent) return;
+      // Broker role: no selection changes allowed
+      if (isBroker) return;
+
+      // Admin: toggle selection
+      setHasUserClicked(true);
+      if (clickedAgency === agencyName) {
+        // Deselect
+        setClickedAgency(null);
+        router.replace('/');
+      } else {
+        // Select new agency
+        setClickedAgency(agencyName);
+        router.replace(`/?agencyId=${encodeURIComponent(agencyName)}`);
+      }
+    },
+    [isAgent, isBroker, clickedAgency, router],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -149,10 +274,9 @@ export default function DashboardPage() {
       try {
         const data = await getPayments();
         if (!cancelled) {
-          const value = compute14DayPaymentsValue(data.PaymentList);
           setState((prev) => ({
             ...prev,
-            payments14Day: value,
+            payments: data.PaymentList,
             payments14DayLoading: false,
           }));
         }
@@ -174,6 +298,48 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, []);
+
+  // Compute filtered data
+  const filteredStatusReport = useMemo(
+    () =>
+      state.dashboard
+        ? filterStatusReport(
+            state.dashboard.PaymentStatusReport,
+            effectiveAgencyFilter,
+          )
+        : [],
+    [state.dashboard, effectiveAgencyFilter],
+  );
+
+  const filteredAgingReport = useMemo(
+    () =>
+      state.dashboard
+        ? filterAgingReport(
+            state.dashboard.ParkedPaymentsAgingReport,
+            effectiveAgencyFilter,
+          )
+        : [],
+    [state.dashboard, effectiveAgencyFilter],
+  );
+
+  // For the agency grid: Broker sees only own agency; Admin/Agent see all agencies
+  // (Admin selection filters charts/metrics but the grid still shows all agencies)
+  const displayAgencies = useMemo(
+    () =>
+      state.dashboard
+        ? filterPaymentsByAgency(
+            state.dashboard.PaymentsByAgency,
+            isBroker ? effectiveAgencyFilter : null,
+          )
+        : [],
+    [state.dashboard, isBroker, effectiveAgencyFilter],
+  );
+
+  const payments14DayValue = useMemo(() => {
+    if (!state.payments) return null;
+    const filtered = filterPayments(state.payments, effectiveAgencyFilter);
+    return compute14DayPaymentsValue(filtered);
+  }, [state.payments, effectiveAgencyFilter]);
 
   // Loading state
   if (state.dashboardLoading) {
@@ -226,16 +392,12 @@ export default function DashboardPage() {
     );
   }
 
-  const readyChartData = computeReadyForPaymentChartData(
-    dashboard.PaymentStatusReport,
-  );
-  const parkedChartData = computeParkedChartData(dashboard.PaymentStatusReport);
-  const totalReadyValue = computeTotalReadyValue(dashboard.PaymentStatusReport);
-  const totalParkedValue = computeTotalParkedValue(
-    dashboard.PaymentStatusReport,
-  );
+  const readyChartData = computeReadyForPaymentChartData(filteredStatusReport);
+  const parkedChartData = computeParkedChartData(filteredStatusReport);
+  const totalReadyValue = computeTotalReadyValue(filteredStatusReport);
+  const totalParkedValue = computeTotalParkedValue(filteredStatusReport);
 
-  const agingData = dashboard.ParkedPaymentsAgingReport.reduce(
+  const agingData = filteredAgingReport.reduce(
     (acc: Record<string, number>, item: ParkedPaymentsAgingReportItem) => {
       acc[item.Range] = (acc[item.Range] || 0) + item.PaymentCount;
       return acc;
@@ -351,7 +513,7 @@ export default function DashboardPage() {
               <p className="text-destructive">{state.payments14DayError}</p>
             ) : (
               <p className="text-3xl font-bold">
-                {formatCurrency(state.payments14Day)}
+                {formatCurrency(payments14DayValue)}
               </p>
             )}
           </CardContent>
@@ -375,31 +537,41 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dashboard.PaymentsByAgency.map(
-                (agency: PaymentsByAgencyReportItem) => (
-                  <TableRow key={agency.AgencyName}>
-                    <TableCell>{agency.AgencyName}</TableCell>
-                    <TableCell>{agency.PaymentCount}</TableCell>
-                    <TableCell>
-                      {formatCurrency(agency.TotalCommissionCount)}
-                    </TableCell>
-                    <TableCell>{formatCurrency(agency.Vat)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          router.push(
-                            `/payments?agencyId=${encodeURIComponent(agency.AgencyName)}`,
-                          )
-                        }
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ),
-              )}
+              {displayAgencies.map((agency: PaymentsByAgencyReportItem) => (
+                <TableRow
+                  key={agency.AgencyName}
+                  aria-selected={
+                    selectedAgency === agency.AgencyName ? 'true' : undefined
+                  }
+                  className={
+                    selectedAgency === agency.AgencyName
+                      ? 'bg-muted cursor-pointer'
+                      : 'cursor-pointer'
+                  }
+                  onClick={() => handleAgencyRowClick(agency.AgencyName)}
+                >
+                  <TableCell>{agency.AgencyName}</TableCell>
+                  <TableCell>{agency.PaymentCount}</TableCell>
+                  <TableCell>
+                    {formatCurrency(agency.TotalCommissionCount)}
+                  </TableCell>
+                  <TableCell>{formatCurrency(agency.Vat)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(
+                          `/payments?agencyId=${encodeURIComponent(agency.AgencyName)}`,
+                        );
+                      }}
+                    >
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

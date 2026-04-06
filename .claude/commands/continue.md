@@ -397,8 +397,9 @@ The coordinator completed Call A and needs user approval.
 
 1. Extract and display the content after "NEEDS_APPROVAL:" as regular conversation text
 2. Use `AskUserQuestion` with the appropriate options for the phase (see orchestrator-rules.md)
-3. After user responds → **new turn with fresh hooks**
-4. Launch a **new coordinator** for the follow-up work. Include in its prompt:
+3. **Re-ask rule (QA manual verification):** If the user responds with a free-text question instead of selecting an option, answer their question, then re-ask `AskUserQuestion` with the **full manual verification checklist** included. Read the checklist verbatim from `generated-docs/qa/epic-N-[slug]/story-M-[slug]-verification-checklist.md` — never omit or abbreviate it. The checklist must be visible every time the verification question is presented, not just the first time.
+4. After user selects an option → **new turn with fresh hooks**
+5. Launch a **new coordinator** for the follow-up work. Include in its prompt:
    - The base coordinator instructions (same as Step 2)
    - The user's approval decision and any feedback
    - Instructions for what to do next (Call B, revisions, etc.)
